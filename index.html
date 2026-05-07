@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Armador de Prompts</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #d8d6cc;
+    --border2: #c8c6bb;
+    --text: #1a1a18;
+    --text2: #5a5950;
+    --text3: #8a8878;
+    --accent: #2d6a4f;
+    --accent-light: #e8f5ee;
+    --accent-border: #a8d5b8;
+    --danger: #c0392b;
+    --danger-light: #fdf0ee;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --radius: 6px;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .counter {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+    padding: 4px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 6rem;
+  }
+
+  .page-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--text3);
+    margin-bottom: 2rem;
+    font-family: var(--mono);
+  }
+
+  .prompt-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+
+  .prompt-card.expanded {
+    border-color: var(--border2);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    padding: 0.875rem 1.25rem;
+    cursor: pointer;
+    user-select: none;
+    gap: 12px;
+    background: var(--surface);
+    transition: background 0.1s;
+  }
+
+  .card-header:hover {
+    background: var(--surface2);
+  }
+
+  .card-number {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    min-width: 32px;
+    text-align: center;
+  }
+
+  .card-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .card-name.empty {
+    color: var(--text3);
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  .card-status {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .status-dot.filled {
+    background: var(--accent);
+  }
+
+  .chevron {
+    color: var(--text3);
+    font-size: 12px;
+    transition: transform 0.2s;
+    margin-left: 4px;
+  }
+
+  .expanded .chevron {
+    transform: rotate(180deg);
+  }
+
+  .card-body {
+    display: none;
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .expanded .card-body {
+    display: block;
+  }
+
+  .field-group {
+    margin-top: 1rem;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    font-family: var(--mono);
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+
+  textarea {
+    min-height: 90px;
+    line-height: 1.6;
+  }
+
+  .files-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg);
+    position: relative;
+  }
+
+  .files-zone:hover, .files-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .files-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .files-zone-text {
+    font-size: 13px;
+    color: var(--text3);
+    pointer-events: none;
+  }
+
+  .files-zone-text strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .files-list {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .file-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--accent-light);
+    border: 1px solid var(--accent-border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+
+  .file-chip-remove {
+    cursor: pointer;
+    color: var(--accent);
+    opacity: 0.6;
+    font-size: 14px;
+    line-height: 1;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+
+  .file-chip-remove:hover { opacity: 1; }
+
+  .card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  button {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.1s;
+    border: 1px solid var(--border);
+    padding: 7px 14px;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  button:hover {
+    background: var(--surface2);
+    border-color: var(--border2);
+  }
+
+  button:active { transform: scale(0.98); }
+
+  button.danger {
+    color: var(--danger);
+    border-color: #f0c0b8;
+    background: var(--danger-light);
+  }
+
+  button.danger:hover {
+    background: #f9e0dc;
+    border-color: #e0a090;
+  }
+
+  .add-prompt-btn {
+    width: 100%;
+    padding: 10px;
+    border: 1.5px dashed var(--border2);
+    background: transparent;
+    color: var(--text3);
+    font-size: 13px;
+    margin-top: 0.5rem;
+    border-radius: 8px;
+  }
+
+  .add-prompt-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .generate-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    z-index: 100;
+  }
+
+  .generate-info {
+    font-size: 13px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  .generate-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    letter-spacing: 0.01em;
+  }
+
+  .generate-btn:hover {
+    background: #245a40;
+    border-color: transparent;
+    color: white;
+  }
+
+  .generate-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .output-section {
+    margin-top: 2rem;
+    display: none;
+  }
+
+  .output-section.visible {
+    display: block;
+  }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .output-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 5px 12px;
+    background: var(--accent-light);
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
+
+  .copy-btn:hover {
+    background: #d0eddc;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .output-box {
+    background: #1a1a18;
+    color: #e8e6dd;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    padding: 1.25rem;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid #333;
+  }
+
+  .toast {
+    position: fixed;
+    top: 1rem;
+    right: 1.5rem;
+    background: var(--accent);
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 600px) {
+    main { padding: 1.5rem 1rem 6rem; }
+    header { padding: 0.75rem 1rem; }
+    .generate-bar { padding: 0.75rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Armador · Detector de Falsos</div>
+  <div class="header-actions">
+    <span class="counter" id="counter">0 prompts</span>
+  </div>
+</header>
+
+<main>
+  <h1 class="page-title">Armador de prompts</h1>
+  <p class="page-subtitle">Agrega tus prompts y sube los CSV de transcripciones</p>
+
+  <div id="prompts-container"></div>
+
+  <button class="add-prompt-btn" onclick="addPrompt()">+ Agregar prompt</button>
+
+  <div class="output-section" id="output-section">
+    <div class="output-header">
+      <span class="output-title">Documento generado</span>
+      <button class="copy-btn" onclick="copyOutput()">Copiar todo</button>
+    </div>
+    <div class="output-box" id="output-box"></div>
+  </div>
+</main>
+
+<div class="generate-bar">
+  <span class="generate-info" id="generate-info">Sin prompts aún</span>
+  <button class="generate-btn" id="generate-btn" onclick="generateDocument()" disabled>Generar documento</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let prompts = [];
+let idCounter = 0;
+
+function addPrompt() {
+  const id = ++idCounter;
+  const p = { id, name: '', current: '', respuesta: '', files: [] };
+  prompts.push(p);
+  renderPrompts();
+  setTimeout(() => {
+    const el = document.getElementById('name-' + id);
+    if (el) el.focus();
+  }, 50);
+}
+
+function removePrompt(id) {
+  prompts = prompts.filter(p => p.id !== id);
+  renderPrompts();
+}
+
+function toggleCard(id) {
+  const card = document.getElementById('card-' + id);
+  card.classList.toggle('expanded');
+}
+
+function updateField(id, field, value) {
+  const p = prompts.find(p => p.id === id);
+  if (p) {
+    p[field] = value;
+    updateCardHeader(id);
+    updateGenerateBar();
+  }
+}
+
+function updateCardHeader(id) {
+  const p = prompts.find(p => p.id === id);
+  if (!p) return;
+  const nameEl = document.getElementById('card-name-' + id);
+  if (p.name.trim()) {
+    nameEl.textContent = p.name.trim();
+    nameEl.classList.remove('empty');
+  } else {
+    nameEl.textContent = 'Sin nombre';
+    nameEl.classList.add('empty');
+  }
+  const dots = document.querySelectorAll('#card-' + id + ' .status-dot');
+  if (dots[0]) dots[0].classList.toggle('filled', p.current.trim().length > 0);
+  if (dots[1]) dots[1].classList.toggle('filled', p.respuesta.trim().length > 0);
+  if (dots[2]) dots[2].classList.toggle('filled', p.files.length > 0);
+}
+
+function handleFiles(id, fileList) {
+  const p = prompts.find(p => p.id === id);
+  if (!p) return;
+  Array.from(fileList).forEach(f => {
+    if (f.name.endsWith('.csv') && !p.files.find(x => x.name === f.name)) {
+      p.files.push(f);
+    }
+  });
+  renderFileChips(id);
+  updateCardHeader(id);
+  updateGenerateBar();
+}
+
+function removeFile(id, filename) {
+  const p = prompts.find(p => p.id === id);
+  if (!p) return;
+  p.files = p.files.filter(f => f.name !== filename);
+  renderFileChips(id);
+  updateCardHeader(id);
+  updateGenerateBar();
+}
+
+function renderFileChips(id) {
+  const p = prompts.find(p => p.id === id);
+  if (!p) return;
+  const container = document.getElementById('files-list-' + id);
+  if (!container) return;
+  container.innerHTML = p.files.map(f => `
+    <div class="file-chip">
+      <span>${f.name}</span>
+      <button class="file-chip-remove" onclick="removeFile(${id}, '${f.name}')" title="Quitar">×</button>
+    </div>
+  `).join('');
+}
+
+function updateGenerateBar() {
+  const valid = prompts.filter(p => p.name.trim() && p.current.trim() && p.respuesta.trim());
+  const total = prompts.length;
+  const info = document.getElementById('generate-info');
+  const btn = document.getElementById('generate-btn');
+  const counter = document.getElementById('counter');
+
+  counter.textContent = total + (total === 1 ? ' prompt' : ' prompts');
+  info.textContent = total === 0 ? 'Sin prompts aún' : `${valid.length} de ${total} completos`;
+  btn.disabled = valid.length === 0;
+}
+
+function renderPrompts() {
+  const container = document.getElementById('prompts-container');
+  container.innerHTML = prompts.map((p, i) => `
+    <div class="prompt-card expanded" id="card-${p.id}">
+      <div class="card-header" onclick="toggleCard(${p.id})">
+        <span class="card-number">${String(i + 1).padStart(2, '0')}</span>
+        <span class="card-name ${p.name ? '' : 'empty'}" id="card-name-${p.id}">${p.name || 'Sin nombre'}</span>
+        <div class="card-status">
+          <div class="status-dot ${p.current ? 'filled' : ''}" title="Prompt actual"></div>
+          <div class="status-dot ${p.respuesta ? 'filled' : ''}" title="Respuesta predeterminada"></div>
+          <div class="status-dot ${p.files.length ? 'filled' : ''}" title="Transcripciones"></div>
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="card-body">
+        <div class="field-group">
+          <label>Nombre del prompt</label>
+          <input type="text" id="name-${p.id}" value="${escHtml(p.name)}"
+            placeholder="ej. Motivo de llamada, Fecha de pago..."
+            oninput="updateField(${p.id}, 'name', this.value)" />
+        </div>
+        <div class="field-group">
+          <label>Prompt actual</label>
+          <textarea id="current-${p.id}" placeholder="Pega aquí el prompt que está actualmente en producción..."
+            oninput="updateField(${p.id}, 'current', this.value)">${escHtml(p.current)}</textarea>
+        </div>
+        <div class="field-group">
+          <label>Respuesta predeterminada a estudiar</label>
+          <textarea id="respuesta-${p.id}" placeholder="¿Cuál respuesta quieres analizar? Ej: 'El cliente prometió pago para el viernes'"
+            oninput="updateField(${p.id}, 'respuesta', this.value)" style="min-height: 70px;">${escHtml(p.respuesta)}</textarea>
+        </div>
+        <div class="field-group">
+          <label>Transcripciones CSV</label>
+          <div class="files-zone" id="zone-${p.id}"
+            ondragover="event.preventDefault(); this.classList.add('dragover')"
+            ondragleave="this.classList.remove('dragover')"
+            ondrop="event.preventDefault(); this.classList.remove('dragover'); handleFiles(${p.id}, event.dataTransfer.files)">
+            <input type="file" accept=".csv" multiple onchange="handleFiles(${p.id}, this.files)" />
+            <div class="files-zone-text">
+              <strong>Selecciona varios CSV</strong> o arrástralos aquí
+            </div>
+          </div>
+          <div class="files-list" id="files-list-${p.id}"></div>
+        </div>
+        <div class="card-actions">
+          <button class="danger" onclick="removePrompt(${p.id})">Eliminar prompt</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  updateGenerateBar();
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function parseCSV(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) { resolve(''); return; }
+      const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim().toLowerCase());
+      const transcIdx = headers.findIndex(h => h.includes('transcripci'));
+      if (transcIdx === -1) { resolve(text); return; }
+      const turns = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvLine(lines[i]);
+        if (cols[transcIdx]) {
+          turns.push(cols[transcIdx].replace(/^"|"$/g,'').trim());
+        }
+      }
+      resolve(turns.filter(Boolean).join('\n'));
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+function parseCsvLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { inQuotes = !inQuotes; }
+    else if (line[i] === ',' && !inQuotes) { result.push(cur); cur = ''; }
+    else { cur += line[i]; }
+  }
+  result.push(cur);
+  return result;
+}
+
+async function generateDocument() {
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Procesando...';
+
+  const valid = prompts.filter(p => p.name.trim() && p.current.trim() && p.respuesta.trim());
+  const parts = [];
+
+  for (let i = 0; i < valid.length; i++) {
+    const p = valid[i];
+    let block = '';
+    block += `══════════════════════════════════════\n`;
+    block += `PROMPT ${i + 1}: ${p.name.toUpperCase()}\n`;
+    block += `══════════════════════════════════════\n\n`;
+    block += `PROMPT ACTUAL:\n${p.current.trim()}\n\n`;
+    block += `RESPUESTA PREDETERMINADA A ESTUDIAR:\n${p.respuesta.trim()}\n\n`;
+
+    if (p.files.length > 0) {
+      for (let j = 0; j < p.files.length; j++) {
+        const transcripcion = await parseCSV(p.files[j]);
+        block += `──────────────────────────────────────\n`;
+        block += `EJEMPLO ${j + 1} (${p.files[j].name}):\n`;
+        block += `──────────────────────────────────────\n`;
+        block += transcripcion.trim() + '\n\n';
+      }
+    } else {
+      block += `[Sin transcripciones adjuntas]\n\n`;
+    }
+
+    parts.push(block);
+  }
+
+  const output = parts.join('\n');
+  const box = document.getElementById('output-box');
+  box.textContent = output;
+
+  const section = document.getElementById('output-section');
+  section.classList.add('visible');
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  btn.textContent = 'Generar documento';
+  btn.disabled = false;
+  updateGenerateBar();
+}
+
+function copyOutput() {
+  const text = document.getElementById('output-box').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('Copiado al portapapeles'));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+addPrompt();
+</script>
+</body>
+</html>
